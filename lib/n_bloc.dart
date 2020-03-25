@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:flutter_test/flutter_test.dart';
+
+typedef VoidCallback = void Function();
 
 /// These bloc implementation are based on my own understanding
 /// The goal of this implementation is to give flexiblity to user with Blocs
@@ -182,6 +183,23 @@ class _SingleBlocProviderState<T> extends State<SingleBlocProvider<T>> {
   }
 }
 
+/// A CrossAccessedBloc represents a bloc which can be accessed by widget from different routes
+/// Meaning if there are two routes
+///
+/// Home()
+/// Details()
+///
+/// Usually if the Bloc is declared inside the Home route and needs to accessed by other routes
+/// you either need to pass the bloc as paramenter or when you're using named Route then you
+/// have to declare the BlocProvider before the routes are generated usually as a parent of MaterialApp
+/// which is fine as it works but it's similar to a `global` your Bloc is generated and is available even if it's
+/// corresponding widget isn't built
+///
+///
+/// A CrossAccessedBloc takes a `String uniqueKey` this represent the specifc bloc and it sohuld always be unique for
+/// all the blocs. Nice thing about CrossAccessedBloc is the widgets under the same tree can access the bloc
+/// by the standard `SingleBlocProvider.of<T>()` as it's internally implementing a SingleBlocProvider but with a GlobalKey
+/// which holds the refernce to it's state
 class CrossAccessedBloc<T> extends StatelessWidget {
   CrossAccessedBloc(
       {@required this.uniqueKey,
@@ -236,26 +254,42 @@ class MultiBlocProvider extends StatelessWidget {
   }
 }
 
+/// CrossAccessedBlocNotifier holds references to all the blocs that can cross-accessed
+/// with the help of these references the bloc can be obtained anywhere in the widget tree
 class CrossAccessedBlocNotifier extends StatelessWidget {
   CrossAccessedBlocNotifier({Key key, this.child}) : super(key: key);
+  //A hashmap of SingleBlocProviders state references
+  //The key is a unique string provided by the `CrossedAccessedBloc` the time of creation
   final Map<String, GlobalKey<dynamic>> _keys = {};
   final Widget child;
 
+  /// This will notify the bloc with help of uniqueKey provided
+  ///
+  /// data - it should have Keys
+  ///
+  /// `data["action_state"]` and `data["data"]` since all the blocs have `dispatch()` to change the state
+  /// and it takes to argument the Action and Data
   static notifyWidgetWithKey<T>(BuildContext context, String uniqueKey,
       [Map<String, dynamic> data]) {
+    // Get the instance of notifier from the widget tree
     final notifier =
         context.findAncestorWidgetOfExactType<CrossAccessedBlocNotifier>();
+
+    // Check if the uniqueKey provided is valid
     if (notifier._keys.containsKey(uniqueKey)) {
+      //Get the SingleBlocProvider widget from the notifier
       final SingleBlocProvider widget = notifier._keys[uniqueKey].currentWidget;
+      //Execute the bloc's dispatch method
       widget.bloc.dispatch(data["action_state"], data["data"]);
     }
   }
 
+  // Adds the global key to the hashmap
   static addKey(BuildContext context, String uniqueKey, GlobalKey key) {
     final notifier =
         context.findAncestorWidgetOfExactType<CrossAccessedBlocNotifier>();
     notifier._keys[uniqueKey] = key;
-    print(notifier._keys);
+    // print(notifier._keys);
   }
 
   @override
