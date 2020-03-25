@@ -173,7 +173,7 @@ class _NotifyTestState extends State<NotifyTest> {
       body: Center(
         child: FlatButton(
             onPressed: () {
-              BlocChangeNotifier.notifyWidgetWithKey<LongBloc>(
+              CrossAccessedBlocNotifier.notifyWidgetWithKey<LongBloc>(
                   context, "longBloc", {"action_state": ActionState.getAll});
             },
             child: Text("Notify")),

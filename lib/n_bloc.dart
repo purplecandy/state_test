@@ -86,6 +86,45 @@ class StreamState<S, T> {
   }
 }
 
+/// Repositories are like centralized data store for widget in the tree
+/// Repositories will never cause any change of state in widget tree
+/// It only holds data objects so multiple resources can use it
+abstract class Repository {
+  Set<VoidCallback> _listeners = Set<VoidCallback>();
+
+  void addListeners(VoidCallback listener) => _listeners.add(listener);
+
+  void removeListeners(VoidCallback listener) =>
+      print("REMOVED" + _listeners.remove(listener).toString());
+
+  void notifyListeners() {
+    for (var listener in _listeners) {
+      listener();
+    }
+  }
+}
+
+class RepositoryProvider<T> extends StatelessWidget {
+  const RepositoryProvider({Key key, T repository, Widget child})
+      : this.repository = repository,
+        this.child = child,
+        super(key: key);
+  final T repository;
+  final Widget child;
+
+  /// Returs the nearest Repository extending from [Repository] from the widget tree
+  static T of<T extends Repository>(BuildContext context) {
+    final provider =
+        context.findAncestorWidgetOfExactType<RepositoryProvider<T>>();
+    return provider.repository;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return child;
+  }
+}
+
 // This is my own implementation of Bloc
 // I perosnally don't like to use any state management library
 // you lose the flexibilty of just Streams and States
@@ -127,12 +166,12 @@ class _SingleBlocProviderState<T> extends State<SingleBlocProvider<T>> {
   @override
   void initState() {
     super.initState();
-    attachKey();
+    _attachKey();
   }
 
-  void attachKey() {
+  void _attachKey() {
     if (widget.attachToNotifier) {
-      BlocChangeNotifier.addKey(context, widget.unqiueKey, widget.key);
+      CrossAccessedBlocNotifier.addKey(context, widget.unqiueKey, widget.key);
     }
   }
 
@@ -197,15 +236,15 @@ class MultiBlocProvider extends StatelessWidget {
   }
 }
 
-class BlocChangeNotifier extends StatelessWidget {
-  BlocChangeNotifier({Key key, this.child}) : super(key: key);
+class CrossAccessedBlocNotifier extends StatelessWidget {
+  CrossAccessedBlocNotifier({Key key, this.child}) : super(key: key);
   final Map<String, GlobalKey<dynamic>> _keys = {};
   final Widget child;
 
   static notifyWidgetWithKey<T>(BuildContext context, String uniqueKey,
       [Map<String, dynamic> data]) {
     final notifier =
-        context.findAncestorWidgetOfExactType<BlocChangeNotifier>();
+        context.findAncestorWidgetOfExactType<CrossAccessedBlocNotifier>();
     if (notifier._keys.containsKey(uniqueKey)) {
       final SingleBlocProvider widget = notifier._keys[uniqueKey].currentWidget;
       widget.bloc.dispatch(data["action_state"], data["data"]);
@@ -214,7 +253,7 @@ class BlocChangeNotifier extends StatelessWidget {
 
   static addKey(BuildContext context, String uniqueKey, GlobalKey key) {
     final notifier =
-        context.findAncestorWidgetOfExactType<BlocChangeNotifier>();
+        context.findAncestorWidgetOfExactType<CrossAccessedBlocNotifier>();
     notifier._keys[uniqueKey] = key;
     print(notifier._keys);
   }
