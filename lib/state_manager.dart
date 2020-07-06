@@ -144,7 +144,8 @@ abstract class StateManager<S, T> {
         }
       await handleAction(action, props);
       onSuccess?.call();
-    } catch (e) {
+    } catch (e, stack) {
+      print(stack);
       onError?.call(e);
     } finally {
       onDone?.call();

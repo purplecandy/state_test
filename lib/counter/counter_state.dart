@@ -11,12 +11,10 @@ class CounterState extends StateManager<dynamic, int> {
   Future<void> handleAction(action, props) async {
     switch (action) {
       case CounterActions.increment:
-        var count = event.object + 1;
-        updateState(null, count);
+        updateState(null, event.object + 1);
         break;
       case CounterActions.decrement:
-        var count = event.object - 1;
-        updateState(null, count);
+        updateState(null, event.object - 1);
         break;
       default:
         throw Exception("Invalid action");
