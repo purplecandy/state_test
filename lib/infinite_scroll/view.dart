@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:state_test/builders.dart';
@@ -13,15 +15,31 @@ class InfiniteScroll extends StatefulWidget {
 
 class _InfiniteScrollState extends State<InfiniteScroll> {
   final _scrollController = ScrollController();
-  final _scrollThreshold = 200.0;
+  final _scaffold = GlobalKey<ScaffoldState>();
   final _posts = PostState();
-
+  Timer _debouce;
+  bool maxReached = false;
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _posts.dispatch(PostActions.fetch,
-        pre: [FetchPostMiddleWare(0, 10)], onError: (e) => print(e));
+    handleFetch();
+  }
+
+  void handleFetch() {
+    _posts.dispatch(
+      PostActions.fetch,
+      pre: [FetchPostMiddleWare(_posts.offset, 10)],
+      onError: (e) {
+        print(e);
+        setState(() {
+          maxReached = true;
+        });
+        _scaffold.currentState.showSnackBar(SnackBar(
+          content: Text(e.toString()),
+        ));
+      },
+    );
   }
 
   @override
@@ -29,10 +47,11 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
     return Provider(
       create: (_) => _posts,
       child: Scaffold(
+        key: _scaffold,
         appBar: AppBar(
           title: Text("Infinite Scroll"),
         ),
-        body: BlocBuilder<Status, PostModel, PostState>(
+        body: BlocBuilder<Status, List<Post>, PostState>(
           onError: (context, error, bloc) => Center(
             child: Text(error.toString()),
           ),
@@ -44,12 +63,12 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
                 );
                 break;
               case Status.success:
-                final items = event.object.items;
+                final items = event.object;
                 return ListView.builder(
                   controller: _scrollController,
                   itemCount: items.length + 1,
                   itemBuilder: (context, index) => index >= items.length
-                      ? BottomLoader()
+                      ? (maxReached ? Container() : BottomLoader())
                       : PostWidget(post: items[index]),
                 );
               default:
@@ -65,17 +84,17 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _debouce.cancel();
+    _posts.dispose();
     super.dispose();
   }
 
+  var count = 0;
   void _onScroll() {
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final currentScroll = _scrollController.position.pixels;
-    if (maxScroll - currentScroll <= _scrollThreshold) {
-      var offset = _posts.event.object.offset;
-      _posts.dispatch(PostActions.fetch, pre: [
-        FetchPostMiddleWare(offset + 10, 10),
-      ]);
+    if (!maxReached) if (!_scrollController.position.outOfRange &&
+        _scrollController.offset >=
+            _scrollController.position.maxScrollExtent) {
+      _debouce = Timer(Duration(milliseconds: 500), handleFetch);
     }
   }
 }

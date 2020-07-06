@@ -6,21 +6,19 @@ enum PostActions {
   fetch,
 }
 
-class PostState extends StateManager<Status, PostModel> {
-  PostState() : super(state: Status.idle, object: PostModel());
+class PostState extends StateManager<Status, List<Post>> {
+  PostState() : super(state: Status.idle, object: List<Post>());
+  int get offset => event.object.length;
   @override
   Future<void> handleAction(action, props) async {
     if (action is PostActions && props is Reply) {
       if (props.status == Status.success) {
         updateState(
             Status.success,
-            PostModel(
-              items: [
-                ...event.object.items,
-                ...(props.data.items as List<Post>)
-              ],
-              offset: props.data.offset,
-            ));
+            List<Post>.from([
+              ...event.object,
+              ...props.data,
+            ]));
       } else {
         updateStateWithError(props.error);
       }
