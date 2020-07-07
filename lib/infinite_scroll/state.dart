@@ -10,7 +10,7 @@ class PostState extends StateManager<Status, List<Post>> {
   PostState() : super(state: Status.idle, object: List<Post>());
   int get offset => event.object.length;
   @override
-  Future<void> handleAction(action, props) async {
+  Future<void> reducer(action, props) async {
     if (action is PostActions && props is Reply) {
       if (props.status == Status.success) {
         updateState(

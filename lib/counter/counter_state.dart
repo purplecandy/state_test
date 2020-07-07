@@ -8,7 +8,7 @@ enum CounterActions {
 class CounterState extends StateManager<dynamic, int> {
   CounterState() : super(state: dynamic, object: 0);
   @override
-  Future<void> handleAction(action, props) async {
+  Future<void> reducer(action, props) async {
     switch (action) {
       case CounterActions.increment:
         updateState(null, event.object + 1);
