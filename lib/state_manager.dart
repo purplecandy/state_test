@@ -54,6 +54,19 @@ class Event<S, T> {
   Event(this.state, this.object);
 }
 
+class CurrentState<S, T> {
+  final Event<S, T> data;
+  final Object error;
+
+  CurrentState(
+    this.data,
+    this.error,
+  ) : assert(!(data != null && error != null),
+            "Both data and error cant be set at the same time");
+  bool get hasData => data != null;
+  bool get hasError => error != null;
+}
+
 abstract class StateManager<S, T> {
   /// Controller that manges the actual data events
   BehaviorSubject<Event<S, T>> _controller;
@@ -62,8 +75,10 @@ abstract class StateManager<S, T> {
   PublishSubject<Event<S, T>> _errorController;
 
   /// A publishSubject doesn't hold values hence a store to save the last error
-  Object lastEmittedError;
-  bool hasError = false;
+  Object _lastEmittedError;
+
+  bool _hasError = false;
+
   StateManager({S state, T object}) {
     //emit the error object with a null first
     _errorController = PublishSubject<Event<S, T>>();
@@ -83,19 +98,24 @@ abstract class StateManager<S, T> {
   // Stream<Event<S, T>> get _errorStream => _errorController.stream;
   Event<S, T> get event => _controller.value;
 
+  CurrentState<S, T> get currentState => _hasError
+      ? CurrentState(null, _lastEmittedError)
+      : CurrentState(_controller.value, null);
+
   /// Emit a new value
   @protected
   void updateState(S state, T data) {
-    if (hasError) hasError = false;
+    if (_hasError) _hasError = false;
     _controller.add(Event<S, T>(state, data));
   }
 
   /// Emit an error
   @protected
   void updateStateWithError(Object error) {
-    lastEmittedError = error;
-    hasError = true;
+    assert(error != null);
     _errorController.addError(error);
+    _lastEmittedError = error;
+    _hasError = true;
   }
 
   Event<S, T> _initialState(S state, T object) => Event<S, T>(state, object);
@@ -131,7 +151,7 @@ abstract class StateManager<S, T> {
       var props = initialProps;
       if (pre != null)
         for (var middleware in pre) {
-          final resp = await middleware.run(event, action, props);
+          final resp = await middleware.run(currentState, action, props);
 
           /// Reply of status unkown will cause an exception,
           /// unkown can will repsent situations that are considerend as traps

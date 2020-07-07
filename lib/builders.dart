@@ -27,10 +27,11 @@ class BlocBuilder<A, K, T extends StateManager> extends StatelessWidget {
       builder: (_, bloc, __) => StreamBuilder<Event<A, K>>(
         stream: bloc.stream,
         initialData: bloc.event,
-        builder: (context, snap) => (snap.hasError || bloc.hasError)
-            ? onError(context,
-                snap.hasError ? snap.error : bloc.lastEmittedError, bloc)
-            : onSuccess(context, snap.data, bloc),
+        builder: (context, snap) =>
+            (snap.hasError || bloc.currentState.hasError)
+                ? onError(context,
+                    snap.hasError ? snap.error : bloc.currentState.error, bloc)
+                : onSuccess(context, snap.data, bloc),
       ),
     );
   }
