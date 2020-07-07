@@ -9,8 +9,9 @@ class FetchPostMiddleWare extends MiddleWare {
   final int limit, startIndex;
   FetchPostMiddleWare(this.startIndex, this.limit);
   @override
-  Future<Reply> run(props) async {
-    /// We are not going to use any props in this case
+  Future<Reply> run(state, action, props) async {
+    /// We are not going to use any `props`,`action`,`state` in this case
+    /// Although the startIndex is can also be obtained from `state`
     try {
       if (startIndex == 50)
         return Reply.error(Status.unkown, "Can't fetch anymore items");
