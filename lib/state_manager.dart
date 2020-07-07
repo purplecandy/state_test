@@ -105,7 +105,7 @@ abstract class StateManager<S, T> {
     _errorController.close();
   }
 
-  Future<void> handleAction(dynamic action, dynamic props);
+  Future<void> reducer(dynamic action, dynamic props);
 
   /// Action can be any class
   /// onDone is option method which you need to call when the action is completed
@@ -146,7 +146,7 @@ abstract class StateManager<S, T> {
             props = resp;
           }
         }
-      await handleAction(action, props);
+      await reducer(action, props);
       onSuccess?.call();
     } catch (e, stack) {
       if (debug) print(stack);
