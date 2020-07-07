@@ -29,7 +29,11 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
   void handleFetch() {
     _posts.dispatch(
       PostActions.fetch,
-      pre: [FetchPostMiddleWare(_posts.offset, 10)],
+      pre: [
+        LoggerMiddleWare(),
+        FetchPostMiddleWare(_posts.offset, 10),
+      ],
+      debug: true,
       onError: (e) {
         print(e);
         setState(() {

@@ -5,6 +5,17 @@ import 'package:state_test/infinite_scroll/models.dart';
 import 'package:state_test/middleware.dart';
 import 'package:state_test/utils.dart';
 
+class LoggerMiddleWare extends MiddleWare {
+  @override
+  Future<Reply> run(state, action, props) async {
+    print("Logger report:");
+    print("Action $action");
+    print("State $state");
+    print("Props $props");
+    return Reply.success(props, allowNull: true);
+  }
+}
+
 class FetchPostMiddleWare extends MiddleWare {
   final int limit, startIndex;
   FetchPostMiddleWare(this.startIndex, this.limit);
