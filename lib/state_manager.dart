@@ -112,6 +112,7 @@ abstract class StateManager<S, T> {
 
   Future<void> dispatch(
     dynamic action, {
+    dynamic initialProps,
 
     /// When the action is completed
     void Function() onDone,
@@ -124,13 +125,16 @@ abstract class StateManager<S, T> {
 
     /// Middleware that will be called before the action is processed
     List<MiddleWare> pre,
+
+    /// If true it will also print `Stacktrace` when an exception is occured
+    bool debug = false,
   }) async {
     try {
       /// Props are values that are passed between middlewares and actions
-      var props;
+      var props = initialProps;
       if (pre != null)
         for (var middleware in pre) {
-          final resp = await middleware.run(props);
+          final resp = await middleware.run(event, action, props);
 
           /// Reply of status unkown will cause an exception,
           /// unkown can will repsent situations that are considerend as traps
@@ -145,7 +149,7 @@ abstract class StateManager<S, T> {
       await handleAction(action, props);
       onSuccess?.call();
     } catch (e, stack) {
-      // print(stack);
+      if (debug) print(stack);
       onError?.call(e);
     } finally {
       onDone?.call();
