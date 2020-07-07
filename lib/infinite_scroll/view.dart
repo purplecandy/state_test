@@ -33,9 +33,9 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
         LoggerMiddleWare(),
         FetchPostMiddleWare(_posts.offset, 10),
       ],
-      debug: true,
-      onError: (e) {
+      onError: (e, stack) {
         print(e);
+        print(stack);
         setState(() {
           maxReached = true;
         });

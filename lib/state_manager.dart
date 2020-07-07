@@ -121,13 +121,10 @@ abstract class StateManager<S, T> {
     void Function() onSuccess,
 
     /// When the action fails to complete
-    void Function(Object error) onError,
+    void Function(Object error, StackTrace stack) onError,
 
     /// Middleware that will be called before the action is processed
     List<MiddleWare> pre,
-
-    /// If true it will also print `Stacktrace` when an exception is occured
-    bool debug = false,
   }) async {
     try {
       /// Props are values that are passed between middlewares and actions
@@ -149,8 +146,7 @@ abstract class StateManager<S, T> {
       await reducer(action, props);
       onSuccess?.call();
     } catch (e, stack) {
-      if (debug) print(stack);
-      onError?.call(e);
+      onError?.call(e, stack);
     } finally {
       onDone?.call();
     }
