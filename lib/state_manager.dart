@@ -51,7 +51,7 @@ import 'middleware.dart';
 class Event<S, T> {
   final S state;
   final T object;
-  Event(this.state, this.object);
+  const Event(this.state, this.object);
 }
 
 class CurrentState<S, T> {
@@ -67,7 +67,7 @@ class CurrentState<S, T> {
   bool get hasError => error != null;
 }
 
-abstract class StateManager<S, T> {
+abstract class StateManager<S, T, A> {
   /// Controller that manges the actual data events
   BehaviorSubject<Event<S, T>> _controller;
 
@@ -123,6 +123,7 @@ abstract class StateManager<S, T> {
   void dispose() {
     _controller.close();
     _errorController.close();
+    _watchers.clear();
   }
 
   Future<void> reducer(dynamic action, dynamic props);
@@ -165,10 +166,47 @@ abstract class StateManager<S, T> {
         }
       await reducer(action, props);
       onSuccess?.call();
+      _notifyWorkers(action);
     } catch (e, stack) {
       onError?.call(e, stack);
     } finally {
       onDone?.call();
     }
   }
+
+  final _watchers = <A, List<ActionWorker>>{};
+
+  /// Add a listerner that executes everytime the specified action is executed
+  void addWorker(A action, ActionWorker worker) {
+    if (_watchers.containsKey(action))
+      _watchers[action].add(worker);
+    else
+      _watchers[action] = <ActionWorker>[worker];
+  }
+
+  /// Executes all workers attached to the specified action
+  void _notifyWorkers(A action) {
+    if (_watchers.containsKey(action))
+      for (var worker in _watchers[action]) {
+        worker.call(dispatch);
+      }
+  }
+
+  /// Returns `true` if a worker is removed
+  bool removeWorker(A action, ActionWorker worker) {
+    if (!_watchers.containsKey(action)) return false;
+    _watchers[action].removeWhere((element) => element == worker);
+    return true;
+  }
 }
+
+typedef Dispatcher = Future<void> Function(
+  dynamic action, {
+  dynamic initialProps,
+  void Function() onDone,
+  void Function() onSuccess,
+  void Function(Object error, StackTrace stack) onError,
+  List<MiddleWare> pre,
+});
+
+typedef ActionWorker = Function(Dispatcher put);

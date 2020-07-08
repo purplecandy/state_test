@@ -7,6 +7,7 @@ import 'package:state_test/infinite_scroll/middlewares.dart';
 import 'package:state_test/infinite_scroll/models.dart';
 import 'package:state_test/infinite_scroll/state.dart';
 import 'package:state_test/utils.dart';
+import 'package:state_test/state_manager.dart';
 
 class InfiniteScroll extends StatefulWidget {
   @override
@@ -24,6 +25,11 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
     super.initState();
     _scrollController.addListener(_onScroll);
     handleFetch();
+    _posts.addWorker(PostActions.retry, apiRequest);
+  }
+
+  void apiRequest(Dispatcher put) {
+    put(PostActions.result, pre: [FetchPostMiddleWare(0, 10)]);
   }
 
   void handleFetch() {
@@ -46,6 +52,17 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
     );
   }
 
+  void retry() {
+    _posts.dispatch(PostActions.retry, onError: (e, s) {
+      print(e);
+      print(s);
+    });
+  }
+
+  void removeListener() {
+    _posts.removeWorker(PostActions.retry, apiRequest);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Provider(
@@ -54,6 +71,16 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
         key: _scaffold,
         appBar: AppBar(
           title: Text("Infinite Scroll"),
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(Icons.refresh),
+              onPressed: () => retry(),
+            ),
+            IconButton(
+              icon: Icon(Icons.cancel),
+              onPressed: () => removeListener(),
+            )
+          ],
         ),
         body: BlocBuilder<Status, List<Post>, PostState>(
           onError: (context, error, bloc) => Center(
@@ -64,6 +91,22 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
               case Status.idle:
                 return Center(
                   child: CircularProgressIndicator(),
+                );
+                break;
+              case Status.loading:
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: <Widget>[
+                      Text("Retrying"),
+                      SizedBox(height: 10),
+                      SizedBox(
+                          height: 30,
+                          width: 30,
+                          child: CircularProgressIndicator()),
+                    ],
+                  ),
                 );
                 break;
               case Status.success:

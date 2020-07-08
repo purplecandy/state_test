@@ -5,7 +5,7 @@ enum CounterActions {
   decrement,
 }
 
-class CounterState extends StateManager<dynamic, int> {
+class CounterState extends StateManager<dynamic, int, dynamic> {
   CounterState() : super(state: dynamic, object: 0);
   @override
   Future<void> reducer(action, props) async {

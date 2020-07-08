@@ -4,7 +4,7 @@ enum Status {
   failed, //known exception e.g SocketIo
   unkown, //exception
   error, //custom error
-  processing, //in between
+  loading, //in between
   idle, // not ready
 }
 
