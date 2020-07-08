@@ -13,23 +13,28 @@ class PostState extends StateManager<Status, List<Post>, PostActions> {
   int get offset => event.object.length;
   @override
   Future<void> reducer(action, props) async {
-    if (action == PostActions.retry) {
-      updateState(Status.loading, event.object);
-      return;
-    }
-    if (action is PostActions && props is Reply) {
-      if (props.status == Status.success &&
-          (action == PostActions.fetch || action == PostActions.result)) {
-        updateState(
-          Status.success,
-          props.data,
-          // List<Post>.from([
-          //   ...props.data,
-          // ]),
-        );
-      } else {
-        updateStateWithError(props.error);
+    if (props is Reply) {
+      switch (action) {
+        case PostActions.fetch:
+          return updateState(
+            Status.success,
+            List<Post>.from([
+              ...event.object,
+              ...props.data,
+            ]),
+          );
+          break;
+        case PostActions.result:
+          updateState(
+            Status.success,
+            props.data,
+          );
+          break;
+        default:
+          updateState(Status.loading, event.object);
       }
+    } else {
+      updateStateWithError(props.error);
     }
   }
 }

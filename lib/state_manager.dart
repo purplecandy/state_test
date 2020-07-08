@@ -126,13 +126,13 @@ abstract class StateManager<S, T, A> {
     _watchers.clear();
   }
 
-  Future<void> reducer(dynamic action, dynamic props);
+  Future<void> reducer(A action, Reply props);
 
   /// Action can be any class
   /// onDone is option method which you need to call when the action is completed
 
   Future<void> dispatch(
-    dynamic action, {
+    A action, {
     dynamic initialProps,
 
     /// When the action is completed
@@ -150,20 +150,22 @@ abstract class StateManager<S, T, A> {
     try {
       /// Props are values that are passed between middlewares and actions
       var props = initialProps;
-      if (pre != null)
-        for (var middleware in pre) {
-          final resp = await middleware.run(currentState, action, props);
+      final combined = List<MiddleWare>()
+        ..addAll(_defaultMiddlewares)
+        ..addAll(pre ?? []);
+      for (var middleware in combined) {
+        final resp = await middleware.run(currentState, action, props);
 
-          /// Reply of status unkown will cause an exception,
-          /// unkown can will repsent situations that are considerend as traps
-          /// this is abost the state update and [onError] will be called
-          if (resp.isUnknown) {
-            print("Middleware failed at: ${middleware.runtimeType}");
-            throw Exception(resp.error);
-          } else {
-            props = resp;
-          }
+        /// Reply of status unkown will cause an exception,
+        /// unkown can will repsent situations that are considerend as traps
+        /// this is abost the state update and [onError] will be called
+        if (resp.isUnknown) {
+          print("Middleware failed at: ${middleware.runtimeType}");
+          throw Exception(resp.error);
+        } else {
+          props = resp;
         }
+      }
       await reducer(action, props);
       onSuccess?.call();
       _notifyWorkers(action);
@@ -174,7 +176,16 @@ abstract class StateManager<S, T, A> {
     }
   }
 
+  final _defaultMiddlewares = List<MiddleWare>();
   final _watchers = <A, List<ActionWorker>>{};
+
+  ///Sets a default middlewares that will be executed on every action
+  void setDefaultMiddlewares(List<MiddleWare> middlewares) {
+    if (_defaultMiddlewares.isNotEmpty)
+      throw Exception("Default middlewares can only be set once");
+    else
+      _defaultMiddlewares.addAll(middlewares);
+  }
 
   /// Add a listerner that executes everytime the specified action is executed
   void addWorker(A action, ActionWorker worker) {

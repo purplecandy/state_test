@@ -24,6 +24,7 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _posts.setDefaultMiddlewares([LoggerMiddleWare()]);
     handleFetch();
     _posts.addWorker(PostActions.retry, apiRequest);
   }
@@ -36,7 +37,6 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
     _posts.dispatch(
       PostActions.fetch,
       pre: [
-        LoggerMiddleWare(),
         FetchPostMiddleWare(_posts.offset, 10),
       ],
       onError: (e, stack) {
