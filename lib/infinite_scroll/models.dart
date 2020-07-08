@@ -7,4 +7,9 @@ class Post {
 
   factory Post.fromJson(Map<String, dynamic> json) =>
       Post(id: json["id"], title: json["title"], body: json["body"]);
+
+  @override
+  String toString() {
+    return "Post $id";
+  }
 }

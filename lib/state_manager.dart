@@ -7,57 +7,6 @@ import 'package:state_test/utils.dart';
 import 'middleware.dart';
 
 /// Author: Nadeem Siddique
-///
-/// Guide:
-///
-/// Create a class that extends the blocbase class
-/// Implement the dispatch function
-/// All the state change should happened to functions passed via the dispatch function
-///
-/// To make this class available in the widget tree
-///
-/// Create an instance of the bloc in a stateful widget
-/// Wrap the build method's widget tree with [Provider<ClassName>] and in the create parameter return the bloc object
-///
-///
-/// How to listen or access the bloc?
-///
-/// If you want to use it in a function user
-/// [Provider.of<ClassName>(context,listen:false)] this will find and return the instance of that bloc from the widget tree
-///
-/// If you want to user in the build method to handle a widget update
-/// Wrap your widget with [BlocBuilder<State,DataType,ClassName>]
-/// this returns you two function [onSuccess] and [onError] with the current event
-///
-///
-/// Methodology:
-///
-/// One Bloc will only manage one stream
-///
-/// Anything that can cause a change in the stream/state has to go through `dispatch()`
-///
-/// Methods that modify the stream should be kept private
-///
-/// Anyother helper function that doesn't cause change in the state/stream can be made public and directly used
-/// Example - Calculate the sum from the stream of events
-
-/// Stream will emit the instance of Events
-/// Every StateSnapshot has 2 members
-/// `state` : A meaningfull representation of the `object`
-/// `object`: The actual value of the state at given instance
-/// Example:
-/// `object` is like symptoms of the pateint
-/// `sate` is the name of the disease concluded from the symptoms of the patient.
-class _SState<S, T> {
-  final S state;
-  final T object;
-  const _SState(this.state, this.object);
-}
-
-class _EState {
-  final Object error;
-  const _EState(this.error);
-}
 
 class StateSnapshot<S, T> {
   final S status;
@@ -109,14 +58,23 @@ abstract class StateManager<S, T, A> {
       _controller.stream.mergeWith([_errorController.stream]);
   // Stream<StateSnapshot<S, T>> get _errorStream => _errorController.stream;
 
-  /// Returns the last emitted state without errors
-  /// If there was no state emitted it will return the initial state value
+  /// Returns the [StateSnapshot.data] from last emitted state without errors
+  ///
+  /// You will always be able to obtain the value of data it's the developers responsiblity
+  /// to handle state proper when there is an error
   T get cData => _controller.value.data;
+
+  /// Returns the [StateSnapshot.status] from last emitted state without errors
+  ///
+  /// You will always be able to obtain the value of data it's the developers responsiblity
+  /// to handle state proper when there is an error
   S get cStatus => _controller.value.status;
+
+  /// Current state
   StateSnapshot<S, T> get state => StateSnapshot(
       _controller.value.status, _controller.value.data, _lastEmittedError);
 
-  /// Emit a new value
+  /// Emit a new state without error
   @protected
   void updateState(S state, T data) {
     _hasError = false;
@@ -124,7 +82,7 @@ abstract class StateManager<S, T, A> {
     _controller.add(StateSnapshot<S, T>(state, data, _lastEmittedError));
   }
 
-  /// Emit an error
+  /// Emit a state with error
   @protected
   void updateStateWithError(Object error) {
     assert(error != null);
