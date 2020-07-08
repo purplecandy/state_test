@@ -87,7 +87,7 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
             child: Text(error.toString()),
           ),
           onSuccess: (context, event, bloc) {
-            switch (event.state) {
+            switch (event.status) {
               case Status.idle:
                 return Center(
                   child: CircularProgressIndicator(),
@@ -110,7 +110,7 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
                 );
                 break;
               case Status.success:
-                final items = event.object;
+                final items = event.data;
                 return ListView.builder(
                   controller: _scrollController,
                   itemCount: items.length + 1,

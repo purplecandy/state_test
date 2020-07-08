@@ -11,10 +11,10 @@ class CounterState extends StateManager<dynamic, int, dynamic> {
   Future<void> reducer(action, props) async {
     switch (action) {
       case CounterActions.increment:
-        updateState(null, event.object + 1);
+        updateState(null, cData + 1);
         break;
       case CounterActions.decrement:
-        updateState(null, event.object - 1);
+        updateState(null, cData - 1);
         break;
       default:
         throw Exception("Invalid action");

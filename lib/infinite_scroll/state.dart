@@ -10,7 +10,7 @@ enum PostActions {
 
 class PostState extends StateManager<Status, List<Post>, PostActions> {
   PostState() : super(state: Status.idle, object: List<Post>());
-  int get offset => event.object.length;
+  int get offset => cData.length;
   @override
   Future<void> reducer(action, props) async {
     if (props is Reply) {
@@ -19,7 +19,7 @@ class PostState extends StateManager<Status, List<Post>, PostActions> {
           return updateState(
             Status.success,
             List<Post>.from([
-              ...event.object,
+              ...cData,
               ...props.data,
             ]),
           );
@@ -31,7 +31,7 @@ class PostState extends StateManager<Status, List<Post>, PostActions> {
           );
           break;
         default:
-          updateState(Status.loading, event.object);
+          updateState(Status.loading, cData);
       }
     } else {
       updateStateWithError(props.error);

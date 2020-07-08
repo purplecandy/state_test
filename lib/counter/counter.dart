@@ -14,7 +14,7 @@ class _CounterAppState extends State<CounterApp> {
   final _counter = CounterState();
 
   void autoIncrement() {
-    if (_counter.event.object < 50)
+    if (_counter.cData < 50)
       _counter.dispatch(CounterActions.increment, onSuccess: () async {
         await Future.delayed(Duration(seconds: 1));
         autoIncrement();
@@ -32,9 +32,9 @@ class _CounterAppState extends State<CounterApp> {
         body: CounterText(),
         // body: StreamBuilder(
         //   stream: _counter.stream,
-        //   initialData: _counter.event,
+        //   initialData: _counter.data,
         //   builder: (context, snap) => Text(
-        //     snap.data.object.toString(),
+        //     snap.cData.toString(),
         //     style: TextStyle(fontSize: 36, fontWeight: FontWeight.w700),
         //   ),
         // ),
@@ -46,7 +46,7 @@ class _CounterAppState extends State<CounterApp> {
               onPressed: () => _counter.dispatch(
                 CounterActions.increment,
                 onDone: () => print("action completed"),
-                onSuccess: () => print(_counter.event.object),
+                onSuccess: () => print(_counter.cData),
                 onError: (e, stack) => print(e),
               ),
               child: Icon(Icons.add),
@@ -61,7 +61,7 @@ class _CounterAppState extends State<CounterApp> {
               onPressed: () => _counter.dispatch(
                 "Invalid action",
                 onDone: () => print("action completed"),
-                onSuccess: () => print(_counter.event.object),
+                onSuccess: () => print(_counter.cData),
                 onError: (e, stack) => print(e),
               ),
               child: Icon(Icons.close),
@@ -84,9 +84,9 @@ class CounterText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<dynamic, int, CounterState>(
-      onSuccess: (context, event, bloc) => Center(
+      onSuccess: (context, state, bloc) => Center(
         child: Text(
-          event.object.toString(),
+          state.data.toString(),
           style: TextStyle(fontSize: 36, fontWeight: FontWeight.w700),
         ),
       ),

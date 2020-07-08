@@ -42,37 +42,49 @@ import 'middleware.dart';
 /// Example - Calculate the sum from the stream of events
 
 /// Stream will emit the instance of Events
-/// Every Event has 2 members
+/// Every StateSnapshot has 2 members
 /// `state` : A meaningfull representation of the `object`
 /// `object`: The actual value of the state at given instance
 /// Example:
 /// `object` is like symptoms of the pateint
 /// `sate` is the name of the disease concluded from the symptoms of the patient.
-class Event<S, T> {
+class _SState<S, T> {
   final S state;
   final T object;
-  const Event(this.state, this.object);
+  const _SState(this.state, this.object);
 }
 
-class CurrentState<S, T> {
-  final Event<S, T> data;
+class _EState {
+  final Object error;
+  const _EState(this.error);
+}
+
+class StateSnapshot<S, T> {
+  final S status;
+  final T data;
   final Object error;
 
-  CurrentState(
+  StateSnapshot(
+    this.status,
     this.data,
     this.error,
   ) : assert(!(data != null && error != null),
             "Both data and error cant be set at the same time");
   bool get hasData => data != null;
   bool get hasError => error != null;
+
+  @override
+  String toString() {
+    return hasError ? error.toString() : data.toString();
+  }
 }
 
 abstract class StateManager<S, T, A> {
   /// Controller that manges the actual data events
-  BehaviorSubject<Event<S, T>> _controller;
+  BehaviorSubject<StateSnapshot<S, T>> _controller;
 
   /// Controller that only manges the error events
-  PublishSubject<Event<S, T>> _errorController;
+  PublishSubject<StateSnapshot<S, T>> _errorController;
 
   /// A publishSubject doesn't hold values hence a store to save the last error
   Object _lastEmittedError;
@@ -81,32 +93,35 @@ abstract class StateManager<S, T, A> {
 
   StateManager({S state, T object}) {
     //emit the error object with a null first
-    _errorController = PublishSubject<Event<S, T>>();
-    _controller = BehaviorSubject<Event<S, T>>();
-    _controller =
-        BehaviorSubject<Event<S, T>>.seeded(_initialState(state, object));
+    _errorController = PublishSubject<StateSnapshot<S, T>>();
+    _controller = BehaviorSubject<StateSnapshot<S, T>>();
+    _controller = BehaviorSubject<StateSnapshot<S, T>>.seeded(
+        _initialState(state, object));
   }
 
   ///Controller of the event stream
-  BehaviorSubject<Event<S, T>> get controller => _controller;
+  BehaviorSubject<StateSnapshot<S, T>> get controller => _controller;
 
   ///Stream that recieves both events and errors
   ///
   ///You should always listen to this stream
-  Stream<Event<S, T>> get stream =>
+  Stream<StateSnapshot<S, T>> get stream =>
       _controller.stream.mergeWith([_errorController.stream]);
-  // Stream<Event<S, T>> get _errorStream => _errorController.stream;
-  Event<S, T> get event => _controller.value;
+  // Stream<StateSnapshot<S, T>> get _errorStream => _errorController.stream;
 
-  CurrentState<S, T> get currentState => _hasError
-      ? CurrentState(null, _lastEmittedError)
-      : CurrentState(_controller.value, null);
+  /// Returns the last emitted state without errors
+  /// If there was no state emitted it will return the initial state value
+  T get cData => _controller.value.data;
+  S get cStatus => _controller.value.status;
+  StateSnapshot<S, T> get state => StateSnapshot(
+      _controller.value.status, _controller.value.data, _lastEmittedError);
 
   /// Emit a new value
   @protected
   void updateState(S state, T data) {
-    if (_hasError) _hasError = false;
-    _controller.add(Event<S, T>(state, data));
+    _hasError = false;
+    _lastEmittedError = null;
+    _controller.add(StateSnapshot<S, T>(state, data, _lastEmittedError));
   }
 
   /// Emit an error
@@ -118,7 +133,8 @@ abstract class StateManager<S, T, A> {
     _hasError = true;
   }
 
-  Event<S, T> _initialState(S state, T object) => Event<S, T>(state, object);
+  StateSnapshot<S, T> _initialState(S state, T object) =>
+      StateSnapshot<S, T>(state, object, null);
 
   void dispose() {
     _controller.close();
@@ -154,7 +170,7 @@ abstract class StateManager<S, T, A> {
         ..addAll(_defaultMiddlewares)
         ..addAll(pre ?? []);
       for (var middleware in combined) {
-        final resp = await middleware.run(currentState, action, props);
+        final resp = await middleware.run(state, action, props);
 
         /// Reply of status unkown will cause an exception,
         /// unkown can will repsent situations that are considerend as traps
