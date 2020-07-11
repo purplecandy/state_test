@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:state_test/builders.dart';
+import 'package:state_test/infinite_scroll/middlewares.dart';
 import 'counter_state.dart';
 
 class CounterApp extends StatefulWidget {
@@ -19,6 +20,16 @@ class _CounterAppState extends State<CounterApp> {
         await Future.delayed(Duration(seconds: 1));
         autoIncrement();
       });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _counter.setDefaultMiddlewares([LoggerMiddleWare()]);
+    _counter.dispatch(CounterActions.increment);
+    _counter.dispatch(CounterActions.increment);
+    _counter.dispatch(CounterActions.increment);
+    _counter.dispatch(CounterActions.increment);
   }
 
   @override

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:collection';
+import 'package:flutter/cupertino.dart';
 import 'package:rxdart/rxdart.dart';
 export 'package:rxdart/transformers.dart';
 import 'package:meta/meta.dart';
@@ -56,7 +58,17 @@ abstract class StateManager<S, T, A> {
   ///You should always listen to this stream
   Stream<StateSnapshot<S, T>> get stream =>
       _controller.stream.mergeWith([_errorController.stream]);
-  // Stream<StateSnapshot<S, T>> get _errorStream => _errorController.stream;
+
+  /// It returns a stream of `T` insted of [StateSnapshot]
+  ///
+  /// Makes tests easier to write
+  Stream<T> get rawStream => stream
+          .transform(StreamTransformer.fromHandlers(handleData: (state, sink) {
+        if (state.hasData)
+          sink.add(state.data);
+        else
+          sink.add(state.error);
+      }));
 
   /// Returns the [StateSnapshot.data] from last emitted state without errors
   ///
@@ -102,10 +114,43 @@ abstract class StateManager<S, T, A> {
 
   Future<void> reducer(A action, Reply props);
 
+  final _queue = ActionQueue();
+
+  Future<void> _internalDispatch(QueuedAction qa) async {
+    try {
+      /// Props are values that are passed between middlewares and actions
+      var props = qa.initialProps;
+      final combined = List<MiddleWare>()
+        ..addAll(_defaultMiddlewares)
+        ..addAll(qa.pre ?? []);
+      for (var middleware in combined) {
+        final resp = await middleware.run(state, qa.actionType, props);
+
+        /// Reply of status unkown will cause an exception,
+        /// unkown can will repsent situations that are considerend as traps
+        /// this is abost the state update and [onError] will be called
+        if (resp.isUnknown) {
+          print("Middleware failed at: ${middleware.runtimeType}");
+          throw Exception(resp.error);
+        } else {
+          props = resp;
+        }
+      }
+      await reducer(qa.actionType, props);
+      qa.onSuccess?.call();
+      _notifyWorkers(qa.actionType);
+    } catch (e, stack) {
+      print("An exception occured when executing the action: ${qa.actionType}");
+      qa.onError?.call(e, stack);
+    } finally {
+      qa.onDone?.call();
+    }
+  }
+
   /// Action can be any class
   /// onDone is option method which you need to call when the action is completed
 
-  Future<void> dispatch(
+  void dispatch(
     A action, {
     dynamic initialProps,
 
@@ -121,33 +166,16 @@ abstract class StateManager<S, T, A> {
     /// Middleware that will be called before the action is processed
     List<MiddleWare> pre,
   }) async {
-    try {
-      /// Props are values that are passed between middlewares and actions
-      var props = initialProps;
-      final combined = List<MiddleWare>()
-        ..addAll(_defaultMiddlewares)
-        ..addAll(pre ?? []);
-      for (var middleware in combined) {
-        final resp = await middleware.run(state, action, props);
-
-        /// Reply of status unkown will cause an exception,
-        /// unkown can will repsent situations that are considerend as traps
-        /// this is abost the state update and [onError] will be called
-        if (resp.isUnknown) {
-          print("Middleware failed at: ${middleware.runtimeType}");
-          throw Exception(resp.error);
-        } else {
-          props = resp;
-        }
-      }
-      await reducer(action, props);
-      onSuccess?.call();
-      _notifyWorkers(action);
-    } catch (e, stack) {
-      onError?.call(e, stack);
-    } finally {
-      onDone?.call();
-    }
+    _queue.enqueue(
+      QueuedAction<A>(
+          actionType: action,
+          initialProps: initialProps,
+          onDone: onDone,
+          onSuccess: onSuccess,
+          onError: onError,
+          pre: pre),
+      _internalDispatch,
+    );
   }
 
   final _defaultMiddlewares = List<MiddleWare>();
@@ -185,6 +213,21 @@ abstract class StateManager<S, T, A> {
   }
 }
 
+class QueuedAction<A> {
+  final A actionType;
+  final dynamic initialProps;
+  final void Function() onDone, onSuccess;
+  final void Function(Object error, StackTrace stack) onError;
+  final List<MiddleWare> pre;
+  QueuedAction(
+      {@required this.actionType,
+      @required this.initialProps,
+      @required this.onDone,
+      @required this.onSuccess,
+      @required this.onError,
+      @required this.pre});
+}
+
 typedef Dispatcher = Future<void> Function(
   dynamic action, {
   dynamic initialProps,
@@ -195,3 +238,35 @@ typedef Dispatcher = Future<void> Function(
 });
 
 typedef ActionWorker = Function(Dispatcher put);
+
+class ActionQueue<A> {
+  final _queue = List<QueuedAction>();
+  bool _busy = false;
+  ActionQueue();
+
+  bool get isEmpty => _queue.isEmpty;
+  bool get isNotEmpty => _queue.isNotEmpty;
+
+  void enqueue(QueuedAction action,
+      Future<void> Function(QueuedAction action) callback) {
+    _queue.add(action);
+    print("Queue total ${_queue.length}");
+    if (_busy == false)
+      onChange(callback);
+    else
+      print("waiting...");
+  }
+
+  void _dequeue() => _queue.removeAt(0);
+
+  void onChange(Future<void> Function(QueuedAction action) cb) async {
+    if (_queue.isNotEmpty) {
+      _busy = true;
+      await cb?.call(_queue.first);
+      _dequeue();
+      print("Remaining ${_queue.length}");
+      onChange(cb);
+    }
+    _busy = false;
+  }
+}
