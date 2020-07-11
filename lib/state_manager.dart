@@ -1,12 +1,12 @@
 import 'dart:async';
-import 'dart:collection';
 import 'package:flutter/cupertino.dart';
 import 'package:rxdart/rxdart.dart';
 export 'package:rxdart/transformers.dart';
 import 'package:meta/meta.dart';
 import 'package:state_test/utils.dart';
-
 import 'middleware.dart';
+
+part 'state_utils.dart';
 
 /// Author: Nadeem Siddique
 
@@ -213,21 +213,6 @@ abstract class StateManager<S, T, A> {
   }
 }
 
-class QueuedAction<A> {
-  final A actionType;
-  final dynamic initialProps;
-  final void Function() onDone, onSuccess;
-  final void Function(Object error, StackTrace stack) onError;
-  final List<MiddleWare> pre;
-  QueuedAction(
-      {@required this.actionType,
-      @required this.initialProps,
-      @required this.onDone,
-      @required this.onSuccess,
-      @required this.onError,
-      @required this.pre});
-}
-
 typedef Dispatcher = Future<void> Function(
   dynamic action, {
   dynamic initialProps,
@@ -238,35 +223,3 @@ typedef Dispatcher = Future<void> Function(
 });
 
 typedef ActionWorker = Function(Dispatcher put);
-
-class ActionQueue<A> {
-  final _queue = List<QueuedAction>();
-  bool _busy = false;
-  ActionQueue();
-
-  bool get isEmpty => _queue.isEmpty;
-  bool get isNotEmpty => _queue.isNotEmpty;
-
-  void enqueue(QueuedAction action,
-      Future<void> Function(QueuedAction action) callback) {
-    _queue.add(action);
-    print("Queue total ${_queue.length}");
-    if (_busy == false)
-      onChange(callback);
-    else
-      print("waiting...");
-  }
-
-  void _dequeue() => _queue.removeAt(0);
-
-  void onChange(Future<void> Function(QueuedAction action) cb) async {
-    if (_queue.isNotEmpty) {
-      _busy = true;
-      await cb?.call(_queue.first);
-      _dequeue();
-      print("Remaining ${_queue.length}");
-      onChange(cb);
-    }
-    _busy = false;
-  }
-}
