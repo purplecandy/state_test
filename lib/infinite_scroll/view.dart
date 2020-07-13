@@ -29,7 +29,7 @@ class _InfiniteScrollState extends State<InfiniteScroll> {
     _posts.addWorker(PostActions.retry, apiRequest);
   }
 
-  void apiRequest(Dispatcher put) {
+  void apiRequest(Dispatcher<PostActions> put) {
     put(PostActions.result, pre: [FetchPostMiddleWare(0, 10)]);
   }
 
@@ -178,7 +178,7 @@ class PostWidget extends StatelessWidget {
       ),
       title: Text(post.title),
       isThreeLine: true,
-      subtitle: Text(post.body),
+      subtitle: Text(post.body ?? "Unknown"),
       dense: true,
     );
   }

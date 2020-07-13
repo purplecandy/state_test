@@ -42,3 +42,14 @@ class ActionQueue<A> {
     _busy = false;
   }
 }
+
+class MutliThreadArgs<T> {
+  final T state;
+  final dynamic action, props;
+  final MiddleWare middleWare;
+  const MutliThreadArgs(this.middleWare, this.state, this.action, this.props);
+}
+
+Future<Reply> threadedExecution(MutliThreadArgs args) async {
+  return await args.middleWare.run(args.state, args.action, args.props);
+}

@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:isolate';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 export 'package:rxdart/transformers.dart';
 import 'package:meta/meta.dart';
@@ -15,7 +17,7 @@ class StateSnapshot<S, T> {
   final T data;
   final Object error;
 
-  StateSnapshot(
+  const StateSnapshot(
     this.status,
     this.data,
     this.error,
@@ -124,6 +126,8 @@ abstract class StateManager<S, T, A> {
         ..addAll(_defaultMiddlewares)
         ..addAll(qa.pre ?? []);
       for (var middleware in combined) {
+        // final resp = await compute(threadedExecution,
+        //     MutliThreadArgs(middleware, state, qa.actionType, props));
         final resp = await middleware.run(state, qa.actionType, props);
 
         /// Reply of status unkown will cause an exception,
@@ -179,7 +183,7 @@ abstract class StateManager<S, T, A> {
   }
 
   final _defaultMiddlewares = List<MiddleWare>();
-  final _watchers = <A, List<ActionWorker>>{};
+  final _watchers = <A, List<ActionWorker<A>>>{};
 
   ///Sets a default middlewares that will be executed on every action
   void setDefaultMiddlewares(List<MiddleWare> middlewares) {
@@ -190,11 +194,11 @@ abstract class StateManager<S, T, A> {
   }
 
   /// Add a listerner that executes everytime the specified action is executed
-  void addWorker(A action, ActionWorker worker) {
+  void addWorker(A action, ActionWorker<A> worker) {
     if (_watchers.containsKey(action))
       _watchers[action].add(worker);
     else
-      _watchers[action] = <ActionWorker>[worker];
+      _watchers[action] = <ActionWorker<A>>[worker];
   }
 
   /// Executes all workers attached to the specified action
@@ -213,8 +217,8 @@ abstract class StateManager<S, T, A> {
   }
 }
 
-typedef Dispatcher = Future<void> Function(
-  dynamic action, {
+typedef Dispatcher<A> = void Function(
+  A action, {
   dynamic initialProps,
   void Function() onDone,
   void Function() onSuccess,
@@ -222,4 +226,4 @@ typedef Dispatcher = Future<void> Function(
   List<MiddleWare> pre,
 });
 
-typedef ActionWorker = Function(Dispatcher put);
+typedef ActionWorker<A> = Function(Dispatcher<A> put);
